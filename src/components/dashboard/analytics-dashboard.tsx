@@ -86,12 +86,12 @@ const AnalyticsDashboard = ({ formData }) => {
             {/* KPI Cards Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <KPICard
-                    title="Final Score Prediction"
+                    title="Final score"
                     value={predictions.demographicPrediction.predicted_score}
-                    description="Based on student demographics"
+                    description="Based on previous student demographics"
                     Icon={Target}
-                    gradientFrom="blue"
-                    gradientTo="blue"
+                    gradientFrom="blue" // Always blue
+                    gradientTo="blue"   // Always blue
                 />
 
                 <KPICard
