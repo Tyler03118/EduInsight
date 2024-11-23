@@ -11,7 +11,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Target, User, Brain } from 'lucide-react';
+import { User, Brain } from 'lucide-react';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { InfoIcon } from "lucide-react";
 
@@ -154,22 +154,66 @@ const MAJORS = [
 const SAMPLE_STUDENTS = [
     {
         id: '6516',
-        description: 'Student with medium engagement'
+        description: 'Student major in Computing'
     },
     {
         id: '8462',
-        description: 'High performing student'
+        description: 'Student major in STEM'
     },
     {
-        id: '11391',
-        description: 'Active student'
+        id: '29764',
+        description: 'Student major in Social Sciences'
     }
 ];
 
 
 
 const PredictionForm = ({ onSubmit, loading = false }) => {
-    const [formMode, setFormMode] = useState('demo'); // 'demo' or 'real'
+
+    const [testScores, setTestScores] = useState([
+        { day: '75', score: '80' },
+        { day: '150', score: '95' },
+    ]);
+
+    // Add helper functions
+    const handleAddTestScore = () => {
+        setTestScores([...testScores, { day: '', score: '' }]);
+    };
+
+    const handleRemoveTestScore = (index) => {
+        const newScores = testScores.filter((_, i) => i !== index);
+        setTestScores(newScores);
+    };
+
+    const handleTestScoreChange = (index, field, value) => {
+        const newScores = [...testScores];
+        newScores[index][field] = value;
+        setTestScores(newScores);
+    };
+
+    // Update isFormValid to include test score validation
+    const isFormValid = () => {
+        const validModule = CODE_MODULES.includes(requiredInputs.codeModule);
+        const validPresentation = CODE_PRESENTATIONS.includes(requiredInputs.codePresentation);
+        const validCurrentDay = isValidCurrentDay(requiredInputs.currentDay);
+        const validTestScores = testScores.every(score =>
+            isValidTestScore(score.score)
+        );
+
+        return validModule && validPresentation && validCurrentDay && validTestScores;
+    };
+
+    // Add validation functions
+    const isValidTestScore = (score) => {
+        const num = Number(score);
+        return !isNaN(num) && num >= 0 && num <= 100;
+    };
+
+    const isValidTestDay = (testDay, currentDay) => {
+        const testNum = Number(testDay);
+        const currentNum = Number(currentDay);
+        return !isNaN(testNum) && testNum > currentNum;
+    };
 
     // Required inputs for API
     const [requiredInputs, setRequiredInputs] = useState({
@@ -177,7 +221,7 @@ const PredictionForm = ({ onSubmit, loading = false }) => {
         codeModule: '',
         codePresentation: '',
         targetScore: '',
-        currentDay: '50'
+        currentDay: '10'
     });
 
     // Demo inputs (not used in API calls but for demonstration)
@@ -218,18 +262,31 @@ const PredictionForm = ({ onSubmit, loading = false }) => {
 
     // TODO: implement onSubmit
     const handleSubmit = (e) => {
-
         e.preventDefault();
-        if (!isFormValid()) return;
 
+        // Ensure form is valid before proceeding
+        if (!isFormValid()) {
+            console.error('Form is invalid. Please check the inputs.');
+            return;
+        }
+
+        // Prepare the updated form data with testScores replacing targetScore
+        const updatedInputs = {
+            ...requiredInputs,
+            testScores: testScores.map((test) => ({
+                day: test.day,
+                score: test.score,
+            })),
+        };
 
         try {
-            onSubmit(requiredInputs);
-            // You could also add a success toast here
+            // Submit updated form data to the API
+            onSubmit(updatedInputs);
         } catch (error) {
             console.error('Error submitting form:', error);
         }
     };
+
 
     const isValidTargetScore = (score) => {
         const num = Number(score);
@@ -241,19 +298,6 @@ const PredictionForm = ({ onSubmit, loading = false }) => {
         return !isNaN(num) && num > 0;
     };
 
-    const isFormValid = () => {
-        const validModule = CODE_MODULES.includes(requiredInputs.codeModule);
-        const validPresentation = CODE_PRESENTATIONS.includes(requiredInputs.codePresentation);
-        const validTargetScore = isValidTargetScore(requiredInputs.targetScore);
-        const validCurrentDay = isValidCurrentDay(requiredInputs.currentDay);
-
-        return (
-            validModule &&
-            validPresentation &&
-            validTargetScore &&
-            validCurrentDay
-        );
-    };
 
 
     return (
@@ -264,7 +308,7 @@ const PredictionForm = ({ onSubmit, loading = false }) => {
             <CardContent>
                 <Tabs defaultValue="demo" className="w-full">
                     <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="demo">Demo Student Profile</TabsTrigger>
+                        <TabsTrigger value="demo">Student Profile</TabsTrigger>
                         <TabsTrigger value="real">Required Information</TabsTrigger>
                     </TabsList>
 
@@ -563,22 +607,11 @@ const PredictionForm = ({ onSubmit, loading = false }) => {
                                         </Select>
                                     </div>
 
-                                    {/* Target Score Input */}
-                                    <div className="space-y-2">
-                                        <Label>Target Score (0-100)</Label>
-                                        <Input
-                                            type="number"
-                                            min="0"
-                                            max="100"
-                                            value={requiredInputs.targetScore}
-                                            onChange={(e) => handleRequiredInputChange('targetScore', e.target.value)}
-                                            placeholder="Enter your target score"
-                                        />
-                                    </div>
-
                                     {/* Current Day Input */}
                                     <div className="space-y-2">
-                                        <Label>Current Day</Label>
+                                        <Label>Current Day
+                                            <p className='space-y-2 text-xs'>(Make sure you have tests result before this date)</p>
+                                        </Label>
                                         <Input
                                             type="number"
                                             min="1"
@@ -587,6 +620,57 @@ const PredictionForm = ({ onSubmit, loading = false }) => {
                                             placeholder="Enter current day"
                                         />
                                     </div>
+                                </div>
+                                <div className="space-y-4 mt-4">
+                                    <div className="flex items-center justify-between">
+                                        <Label>Test Scores and Dates</Label>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={handleAddTestScore}
+                                            size="sm"
+                                        >
+                                            Add Test
+                                        </Button>
+                                    </div>
+
+                                    {testScores.map((test, index) => (
+                                        <div key={index} className="grid grid-cols-2 gap-4 items-center">
+                                            <div className="space-y-2">
+                                                <Label>Test Day {index + 1}</Label>
+                                                <Input
+                                                    type="number"
+                                                    min={requiredInputs.currentDay}
+                                                    value={test.day}
+                                                    onChange={(e) => handleTestScoreChange(index, 'day', e.target.value)}
+                                                    placeholder="Enter test day"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Target Score {index + 1}</Label>
+                                                <div className="flex gap-2">
+                                                    <Input
+                                                        type="number"
+                                                        min="0"
+                                                        max="100"
+                                                        value={test.score}
+                                                        onChange={(e) => handleTestScoreChange(index, 'score', e.target.value)}
+                                                        placeholder="Enter target score"
+                                                    />
+                                                    {testScores.length > 1 && (
+                                                        <Button
+                                                            type="button"
+                                                            variant="destructive"
+                                                            size="icon"
+                                                            onClick={() => handleRemoveTestScore(index)}
+                                                        >
+                                                            ×
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             </CardContent>
                         </Card>

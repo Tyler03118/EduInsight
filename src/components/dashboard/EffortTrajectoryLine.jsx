@@ -11,20 +11,28 @@ import {
     ReferenceLine,
 } from 'recharts';
 
-const EffortPredictionChart = ({
-    effortData,
-    currentDay = 50,
-    targetScores = [[75, 50], [150, 50], [212, 50]] // Format: [day, score]
+export const EffortTrajectoryLine = ({
+    effortData = [], // Default to an empty array
+    currentDay = 5, // Start with day 5 as the minimum
+    targetScores = [], // Default to an empty array
 }) => {
-    // Transform the raw effort array into chart data
-    const chartData = effortData.map((effort, index) => ({
-        day: index,
-        effort: effort
+    if (!effortData.length) {
+        console.error('Invalid or missing effortData:', effortData);
+        return <div>No Effort Data Available</div>;
+    }
+
+    // Limit data to 150 days
+    const limitedEffortData = effortData.slice(0, Math.ceil(150 / 5)); // Only include points up to day 150
+
+    // Map effort data to a chart-friendly format starting from day 5
+    const chartData = limitedEffortData.map((effort, index) => ({
+        day: index * 5 + 5, // Increment days by 5 starting at 5
+        effort: parseFloat(effort.toFixed(2)), // Ensure numeric effort values
     }));
 
-    // Split data into historical (blue) and predicted (orange) parts
-    const historicalData = chartData.slice(0, currentDay + 1);
-    const predictedData = chartData.slice(currentDay);
+    // Split data into historical (before currentDay) and predicted (after currentDay)
+    const historicalData = chartData.filter((data) => data.day <= currentDay);
+    const predictedData = chartData.filter((data) => data.day > currentDay);
 
     return (
         <Card>
@@ -35,30 +43,39 @@ const EffortPredictionChart = ({
                 <div className="h-[400px]">
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart
-                            margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+                            data={chartData}
+                            margin={{
+                                top: 50,    // Increased to give space for the title or labels
+                                right: 50,  // Added to avoid cutting off the right labels
+                                left: 50,   // Added to avoid cutting off the left Y-axis labels
+                                bottom: 50, // Increased to give space for X-axis labels
+                            }}
                         >
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis
+                                dataKey="day"
                                 type="number"
-                                domain={[0, 220]}
+                                domain={[5, 150]} // Limit X-axis to 150 days
                                 label={{
                                     value: 'Days from start of course',
                                     position: 'bottom',
-                                    offset: -10
+                                    offset: 5, // Adjusted to move the label below the tick marks
                                 }}
                             />
                             <YAxis
-                                domain={[0, 80]}
+                                dataKey="effort"
+                                domain={[0, Math.max(...chartData.map((d) => d.effort)) + 20]}
                                 label={{
                                     value: 'Effort',
                                     angle: -90,
                                     position: 'insideLeft',
-                                    offset: -10
+                                    offset: -20, // Adjusted to prevent overlapping with the chart area
                                 }}
                             />
-                            <Tooltip />
-
-                            {/* Historical effort line (blue) */}
+                            <Tooltip
+                                formatter={(value) => `${value}`} // Show only the effort value in the tooltip
+                                contentStyle={{ fontSize: 12 }} // Style the tooltip text
+                            />
                             <Line
                                 data={historicalData}
                                 type="monotone"
@@ -66,10 +83,7 @@ const EffortPredictionChart = ({
                                 stroke="#2563eb"
                                 strokeWidth={2}
                                 dot={false}
-                                isAnimationActive={false}
                             />
-
-                            {/* Predicted effort line (orange) */}
                             <Line
                                 data={predictedData}
                                 type="monotone"
@@ -77,34 +91,29 @@ const EffortPredictionChart = ({
                                 stroke="#f97316"
                                 strokeWidth={2}
                                 dot={false}
-                                isAnimationActive={false}
                             />
-
-                            {/* Current day reference line (green) */}
                             <ReferenceLine
                                 x={currentDay}
                                 stroke="#22c55e"
                                 strokeDasharray="5 5"
                                 label={{
-                                    value: "Current day",
+                                    value: 'Current day',
                                     position: 'top',
                                     fill: '#22c55e',
-                                    fontSize: 12
+                                    fontSize: 12,
                                 }}
                             />
-
-                            {/* Target score reference lines (red) */}
                             {targetScores.map(([day, score], index) => (
                                 <ReferenceLine
-                                    key={day}
+                                    key={`target-${index}`}
                                     x={day}
                                     stroke="#ef4444"
                                     strokeDasharray="5 5"
                                     label={{
-                                        value: `Test, target score ${score}`,
+                                        value: `Test (Target: ${score})`,
                                         position: 'top',
                                         fill: '#ef4444',
-                                        fontSize: 12
+                                        fontSize: 12,
                                     }}
                                 />
                             ))}
@@ -115,35 +124,3 @@ const EffortPredictionChart = ({
         </Card>
     );
 };
-
-// Example usage with sample data
-const ExampleUsage = () => {
-    // Sample effort data matching the provided output format
-    const sampleEffortData = [
-        74, 3, 25, 8, 4, 2, 1, 1, 0.5, 0.5,  // Initial fluctuating pattern
-        ...Array(40).fill(0.5),  // Low steady state
-        ...Array.from({ length: 25 }, (_, i) => i * 3),  // Rising trend
-        ...Array.from({ length: 50 }, (_, i) => {
-            const base = 75 - Math.sin(i / 10) * 45;
-            return Math.max(30, base);
-        }),
-        ...Array.from({ length: 50 }, (_, i) => {
-            const base = 75 - Math.sin(i / 10) * 45;
-            return Math.max(30, base);
-        }),
-        ...Array.from({ length: 50 }, (_, i) => {
-            const base = 75 - Math.sin(i / 10) * 45;
-            return Math.max(30, base);
-        })
-    ];
-
-    return (
-        <EffortPredictionChart
-            effortData={sampleEffortData}
-            currentDay={50}
-            targetScores={[[75, 50], [150, 50], [212, 50]]}
-        />
-    );
-};
-
-export default ExampleUsage;
