@@ -22,7 +22,7 @@ export const EffortTrajectoryLine = ({
     }
 
     // Limit data to 150 days
-    const limitedEffortData = effortData.slice(0, Math.ceil(150 / 5)); // Only include points up to day 150
+    const limitedEffortData = effortData.slice(0, Math.ceil(200 / 5)); // Only include points up to day 150
 
     // Map effort data to a chart-friendly format starting from day 5
     const chartData = limitedEffortData.map((effort, index) => ({
@@ -33,6 +33,12 @@ export const EffortTrajectoryLine = ({
     // Split data into historical (before currentDay) and predicted (after currentDay)
     const historicalData = chartData.filter((data) => data.day <= currentDay);
     const predictedData = chartData.filter((data) => data.day > currentDay);
+
+    // Ensure seamless connection between historical and predicted data
+    if (predictedData.length > 0 && historicalData.length > 0) {
+        const lastHistoricalPoint = historicalData[historicalData.length - 1];
+        predictedData.unshift({ ...lastHistoricalPoint }); // Add the last historical point as the first predicted point
+    }
 
     return (
         <Card>
